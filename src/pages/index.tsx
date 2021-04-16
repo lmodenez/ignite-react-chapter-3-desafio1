@@ -7,6 +7,7 @@ import { RichText } from 'prismic-dom';
 import commonStyles from '../styles/common.module.scss';
 import styles from './home.module.scss';
 import Head from 'next/head';
+import { ReactElement } from 'react';
 
 interface Post {
   uid?: string;
@@ -27,12 +28,16 @@ interface HomeProps {
   postsPagination: PostPagination;
 }
 
-export default function Home() {
+export default function Home({ postsPagination }: HomeProps): ReactElement  {
   return (
     <>
       <Head>
         <title>Posts | Challenge</title>
       </Head>
+      <main>
+        <div>
+        </div>
+      </main>
 
     </>
   )
@@ -44,21 +49,33 @@ export const getStaticProps: GetStaticProps = async () => {
   const postsResponse = await prismic.query(
     [Prismic.predicates.at('document.type','posts')],
     {
-      fetch: ['posts.title'],
-      pageSize: 100,
+      pageSize: 3,
     }
   );
 
-  const posts = postsResponse.results.map((post) => {
+  const posts = postsResponse.results.map(post => {
     return {
-      slug: post.uid,
-      title: post.data.title
-    }
-  })
+      uid: post.uid,
+      first_publication_date: post.first_publication_date,
+      data: {
+        title: post.data.title,
+        subtitle: post.data.subtitle,
+        author: post.data.author,
+      },
+    };
+  });
 
-  console.log(posts);
+  const postsPagination = {
+    next_page: postsResponse.next_page,
+    results: posts,
+  };
+
+  console.log(postsPagination)
 
   return {
-    props: { posts },
+    props: {
+      postsPagination
+    },
+    revalidate: 1800,
   };
 };
