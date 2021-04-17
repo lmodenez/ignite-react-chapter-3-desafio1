@@ -1,10 +1,7 @@
 .headerContent {
+  height: 7rem;
   max-width: 1120px;
-  height: 5rem;
-  margin: 0 auto;
-  padding: 0 2rem;
-
-  img {
-    margin-top: 81.5px;
-  }
+  margin:0 auto;
+  display:flex;
+  align-items: center;
 }
