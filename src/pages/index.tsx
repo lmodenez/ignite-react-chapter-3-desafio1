@@ -9,11 +9,12 @@ import {
 import commonStyles from '../styles/common.module.scss';
 import styles from './home.module.scss';
 import Head from 'next/head';
-import { ReactElement } from 'react';
+import { ReactElement, useState } from 'react';
 
 import { format } from 'date-fns';
 import ptBR from 'date-fns/locale/pt-BR';
 import Link from 'next/link';
+import Header  from  '../components/Header';
 
 interface Post {
   uid?: string;
@@ -34,27 +35,59 @@ interface HomeProps {
   postsPagination: PostPagination;
 }
 
-export default function Home({ postsPagination }: HomeProps): ReactElement  {
-  const posts = postsPagination.results
 
-  console.log(posts)
+
+export default function Home({ postsPagination }: HomeProps): ReactElement  {
+  const [posts, setPosts] = useState<Post[]>(postsPagination.results)
+  const [morePosts, setMorePosts] = useState(postsPagination.next_page)
+
+  async function handleMorePost(): Promise<void> {
+    if(!morePosts){
+      return
+    }
+
+    const result = await fetch(`${morePosts}`).then(response => response.json())
+    setMorePosts(result.next_page)
+
+    const newPosts = result.results.map(post => {
+      return {
+        uid: post.uid,
+        first_publication_date: post.first_publication_date,
+        data: {
+          title: post.data.title,
+          subtitle: post.data.subtitle,
+          author: post.data.author,
+        }
+      }
+    })
+
+    setPosts([
+      ...posts,
+      ...newPosts
+    ])
+  }
 
   return (
     <>
       <Head>
         <title>Posts | Ignews</title>
       </Head>
+      <Header />
       <main className={styles.contentContainer}>
         <div className={styles.postsContent}>
           {posts.map(post => (
-            <Link href={`/post/${post.uid}`} key={post.uid}>
-              <a className={styles.post}>
+            <Link href={`/post/${post.uid}`} >
+              <a key={post.uid}>
                 <strong>{post.data.title}</strong>
                 <p>{post.data.subtitle}</p>
                 <ul>
                   <li>
                     <FiCalendar />
-                    {post.first_publication_date}
+                    {format(
+                      new Date(post.first_publication_date),
+                      "dd MMM yyy",
+                      { locale: ptBR }
+                    )}
                   </li>
                   <li>
                     <FiUser />
@@ -65,8 +98,12 @@ export default function Home({ postsPagination }: HomeProps): ReactElement  {
             </Link>
           ))}
         </div>
+        {morePosts &&
+          <button type="button" className={styles.loadMore} onClick={handleMorePost}>
+            Carregar mais posts
+          </button>
+        }
       </main>
-
     </>
   )
 }
@@ -78,19 +115,19 @@ export const getStaticProps: GetStaticProps = async () => {
     [Prismic.predicates.at('document.type','posts')],
     {
       // fetch: ['posts.next_page', 'posts.title', 'posts.subtitle', 'posts.author'],
-      pageSize: 2,
+      pageSize: 1,
       orderings: '[posts.last_publication_date]',
     }
   );
 
   const posts = postsResponse.results.map(post => {
     return {
-      slug: post.uid,
-      first_publication_date: format(new Date(post.first_publication_date),'dd MMM yyyy',{locale: ptBR,}),
+      uid: post.uid,
+      first_publication_date: post.first_publication_date,
       data: {
-        title: post.data.title || null,
-        subtitle: post.data.subtitle || null,
-        author: post.data.author || null,
+        title: post.data.title,
+        subtitle: post.data.subtitle,
+        author: post.data.author,
       }
     }
   })
